@@ -37,7 +37,7 @@ const Index = () => {
               </Button>
             </Link>
             <Link to="/login">
-              <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
+              <Button variant="outline" className="border-white text-black hover:bg-white/10 px-8 py-6 text-lg hover:text-white">
                 Restaurant already registered? Sign in
               </Button>
             </Link>
