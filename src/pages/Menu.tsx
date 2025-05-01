@@ -2,240 +2,330 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Plus, Edit, Trash, Search } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent
+} from "@/components/ui/collapsible";
 
-// Mock menu items data
-const initialMenuItems = [
-  {
-    id: 1,
-    name: "Tom Yummy",
-    description: "Soft, Lime Vodka, Lemongrass, Ginger, Chilli",
-    category: "DRINK",
-    price: 5000,
-    image: "/lovable-uploads/10c774d0-e577-4cad-9e38-e8830697ec3b.png"
-  },
-  {
-    id: 2,
-    name: "Singapore Sling",
-    description: "Gin, Cointreau, Cherry Liqueur",
-    category: "DRINK",
-    price: 5000,
-    image: "/lovable-uploads/3294206c-dac3-4fa3-a841-1f3fe8e284bb.png"
-  },
-  {
-    id: 3,
-    name: "Mojito",
-    description: "Rum, Mint, Sugar, Lime Juice, Soda",
-    category: "DRINK",
-    price: 5000,
-    image: "/lovable-uploads/3294206c-dac3-4fa3-a841-1f3fe8e284bb.png"
-  }
-];
+// Menu item type definition
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image?: string;
+}
+
+// Menu category type definition
+interface MenuCategory {
+  id: string;
+  name: string;
+  items: MenuItem[];
+}
 
 const Menu = () => {
-  const [activeCategory, setActiveCategory] = useState("DRINK");
-  const [menuItems, setMenuItems] = useState(initialMenuItems);
-  const [newItem, setNewItem] = useState({
+  const [categories, setCategories] = useState<MenuCategory[]>([
+    {
+      id: "cat1",
+      name: "Appetizers",
+      items: [
+        {
+          id: "item1",
+          name: "Bruschetta",
+          description: "Toasted bread topped with tomatoes, garlic, olive oil and basil",
+          price: 8.99,
+          category: "cat1"
+        },
+        {
+          id: "item2",
+          name: "Mozzarella Sticks",
+          description: "Deep-fried mozzarella with marinara dipping sauce",
+          price: 7.99,
+          category: "cat1"
+        }
+      ]
+    },
+    {
+      id: "cat2",
+      name: "Main Course",
+      items: [
+        {
+          id: "item3",
+          name: "Spaghetti Bolognese",
+          description: "Classic Italian pasta with rich meat sauce",
+          price: 14.99,
+          category: "cat2"
+        },
+        {
+          id: "item4",
+          name: "Grilled Salmon",
+          description: "Fresh salmon fillet with lemon butter sauce and seasonal vegetables",
+          price: 18.99,
+          category: "cat2"
+        }
+      ]
+    },
+    {
+      id: "cat3",
+      name: "Desserts",
+      items: [
+        {
+          id: "item5",
+          name: "Tiramisu",
+          description: "Classic Italian coffee-flavored dessert",
+          price: 6.99,
+          category: "cat3"
+        }
+      ]
+    }
+  ]);
+
+  const [newItemForm, setNewItemForm] = useState({
     name: "",
     description: "",
-    category: "DRINK",
-    price: 0,
-    image: null
+    price: "",
+    category: ""
   });
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewItem(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setNewItem(prev => ({ ...prev, category: value }));
-  };
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
   const handleAddItem = () => {
-    if (!newItem.name || !newItem.price) {
-      toast.error("Please fill in required fields");
+    if (!newItemForm.name || !newItemForm.price || !newItemForm.category) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
-    const newItemWithId = {
-      ...newItem,
-      id: menuItems.length + 1,
-      image: "/lovable-uploads/3294206c-dac3-4fa3-a841-1f3fe8e284bb.png" // placeholder image
+    const newItem: MenuItem = {
+      id: `item${Date.now()}`,
+      name: newItemForm.name,
+      description: newItemForm.description,
+      price: parseFloat(newItemForm.price),
+      category: newItemForm.category
     };
 
-    setMenuItems([...menuItems, newItemWithId]);
-    toast.success("Menu item added successfully!");
-    setNewItem({
+    setCategories(prev => 
+      prev.map(category => 
+        category.id === newItemForm.category
+          ? { ...category, items: [...category.items, newItem] }
+          : category
+      )
+    );
+
+    setNewItemForm({
       name: "",
       description: "",
-      category: activeCategory,
-      price: 0,
-      image: null
+      price: "",
+      category: ""
     });
-    setDialogOpen(false);
+
+    toast.success("Menu item added successfully");
   };
 
-  const categories = [
-    { id: "DRINK", label: "Drink" },
-    { id: "STARTER", label: "Starter" },
-    { id: "APPETIZER", label: "Appetizer" },
-    { id: "DESSERT", label: "Dessert" },
-    { id: "MAIN", label: "Main" },
-  ];
+  const handleEditItem = () => {
+    if (!editingItem) return;
+    
+    setCategories(prev => 
+      prev.map(category => ({
+        ...category,
+        items: category.items.map(item => 
+          item.id === editingItem.id ? editingItem : item
+        )
+      }))
+    );
+    
+    setEditingItem(null);
+    toast.success("Menu item updated successfully");
+  };
 
-  const filteredItems = menuItems.filter(item => item.category === activeCategory);
+  const handleDeleteItem = (itemId: string, categoryId: string) => {
+    setCategories(prev => 
+      prev.map(category => 
+        category.id === categoryId
+          ? { ...category, items: category.items.filter(item => item.id !== itemId) }
+          : category
+      )
+    );
+    
+    toast.success("Menu item deleted successfully");
+  };
+
+  const filteredCategories = categories.map(category => ({
+    ...category,
+    items: category.items.filter(item => 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })).filter(category => category.items.length > 0);
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Menu</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Menu Management</h1>
+          <Button onClick={() => toast.success("Menu saved successfully!")}>
+            Save Menu
+          </Button>
         </div>
 
-        <Card className="p-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-medium">Menus</h2>
-            <p className="text-sm text-gray-500">as of 23-May-2022, 04:44 PM</p>
+        {/* Search and Add New Item */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative w-full md:w-1/2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+            <Input 
+              placeholder="Search menu items..." 
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+          <Button className="bg-orange-500 hover:bg-orange-600">
+            <Plus className="h-4 w-4 mr-2" /> Add New Category
+          </Button>
+        </div>
 
-          <div className="flex space-x-2 overflow-x-auto pb-4">
-            {categories.map((category) => (
-              <Button
-                key={category.id}
-                onClick={() => setActiveCategory(category.id)}
-                className={`rounded-full ${
-                  activeCategory === category.id
-                    ? "bg-orange-500 hover:bg-orange-600 text-white"
-                    : "bg-white border hover:bg-gray-100"
-                }`}
-                variant={activeCategory === category.id ? "default" : "outline"}
-              >
-                {category.label}
-              </Button>
-            ))}
-          </div>
-
-          <div className="space-y-3 mt-6">
-            {filteredItems.map((item) => (
-              <div key={item.id} className="flex items-center space-x-4 bg-gray-50 p-4 rounded-md">
-                <div className="w-16 h-16 rounded-md bg-gray-200 overflow-hidden">
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm text-gray-500">{item.description}</div>
-                  <div className="font-medium">{item.name} - 12.5</div>
-                  <div className="text-orange-500">Frw {item.price}</div>
-                </div>
+        {/* Add New Item Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="itemName">Item Name</Label>
+                <Input 
+                  id="itemName" 
+                  placeholder="e.g., Caesar Salad" 
+                  value={editingItem ? editingItem.name : newItemForm.name}
+                  onChange={(e) => editingItem 
+                    ? setEditingItem({...editingItem, name: e.target.value}) 
+                    : setNewItemForm({...newItemForm, name: e.target.value})}
+                />
               </div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex justify-between">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default" size="sm">Add Item</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Menu Item</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Create new item name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={newItem.name}
-                      onChange={handleInputChange}
-                      placeholder="Name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Category</Label>
-                    <RadioGroup 
-                      value={newItem.category} 
-                      onValueChange={handleCategoryChange}
-                      className="grid grid-cols-2 gap-2 mt-2"
-                    >
-                      {categories.map((category) => (
-                        <div key={category.id} className="flex items-center space-x-2">
-                          <RadioGroupItem value={category.id} id={category.id} />
-                          <Label htmlFor={category.id}>{category.label}</Label>
-                          {category.id === "DRINK" && (
-                            <span className="bg-gray-200 text-xs px-2 py-0.5 rounded">DEFAULT</span>
-                          )}
-                          {category.id !== "DRINK" && (
-                            <Button variant="ghost" size="sm" className="ml-auto h-6 text-xs bg-orange-500 hover:bg-orange-600 text-white">
-                              NEW
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="price">Price (RWF)</Label>
-                    <Input
-                      id="price"
-                      name="price"
-                      type="number"
-                      value={newItem.price || ""}
-                      onChange={handleInputChange}
-                      placeholder="Price"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      name="description"
-                      value={newItem.description}
-                      onChange={handleInputChange}
-                      placeholder="Description"
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button 
-                      onClick={handleAddItem}
-                      className="bg-orange-500 hover:bg-orange-600 text-white"
-                    >
-                      Add Item
+              
+              <div className="space-y-2">
+                <Label htmlFor="itemPrice">Price ($)</Label>
+                <Input 
+                  id="itemPrice" 
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g., 12.99"
+                  value={editingItem ? editingItem.price : newItemForm.price}
+                  onChange={(e) => editingItem 
+                    ? setEditingItem({...editingItem, price: parseFloat(e.target.value)}) 
+                    : setNewItemForm({...newItemForm, price: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="itemDescription">Description</Label>
+                <Input 
+                  id="itemDescription" 
+                  placeholder="Brief description of the item"
+                  value={editingItem ? editingItem.description : newItemForm.description}
+                  onChange={(e) => editingItem 
+                    ? setEditingItem({...editingItem, description: e.target.value}) 
+                    : setNewItemForm({...newItemForm, description: e.target.value})}
+                />
+              </div>
+              
+              {!editingItem && (
+                <div className="space-y-2">
+                  <Label htmlFor="itemCategory">Category</Label>
+                  <select 
+                    id="itemCategory"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={newItemForm.category}
+                    onChange={(e) => setNewItemForm({...newItemForm, category: e.target.value})}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <div className="md:col-span-2 flex justify-end pt-4">
+                {editingItem ? (
+                  <div className="space-x-2">
+                    <Button variant="outline" onClick={() => setEditingItem(null)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleEditItem}>
+                      Update Item
                     </Button>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <Plus className="h-5 w-5 text-gray-500" />
+                ) : (
+                  <Button onClick={handleAddItem}>
+                    Add Item
+                  </Button>
+                )}
               </div>
-              <span className="text-gray-500">Create new item</span>
             </div>
-          </div>
+          </CardContent>
         </Card>
+
+        {/* Menu Categories and Items */}
+        <div className="space-y-4">
+          {filteredCategories.length > 0 ? (
+            filteredCategories.map(category => (
+              <Collapsible key={category.id} defaultOpen={true} className="border rounded-md">
+                <CollapsibleTrigger className="flex justify-between items-center w-full p-4 bg-gray-50 hover:bg-gray-100">
+                  <h3 className="text-lg font-medium">{category.name}</h3>
+                  <span className="text-sm text-gray-500">{category.items.length} items</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="p-4 space-y-4">
+                    {category.items.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-3 border-b last:border-0">
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <h4 className="font-medium">{item.name}</h4>
+                            <span className="ml-2 text-orange-500 font-medium">${item.price.toFixed(2)}</span>
+                          </div>
+                          <p className="text-sm text-gray-600">{item.description}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => setEditingItem(item)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleDeleteItem(item.id, category.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-md">
+              <p className="text-gray-500">No menu items found</p>
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
